@@ -332,7 +332,7 @@ void TetrisController::Render()
 	// TODO: Обновить отображение через рендерер
 	if (m_pRenderer)
 	{
-		m_pRenderer->Invalidate();
+		m_pRenderer->Invalidate(FALSE);
 		m_pRenderer->UpdateWindow();
 	}
 }
@@ -342,7 +342,7 @@ void TetrisController::ForceRedraw()
 {
 	if (m_pRenderer)
 	{
-		m_pRenderer->Invalidate();
+		m_pRenderer->Invalidate(FALSE);
 		m_pRenderer->UpdateWindow();
 	}
 }

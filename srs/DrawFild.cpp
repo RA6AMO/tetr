@@ -14,6 +14,7 @@ DrawFild::~DrawFild()
 
 BEGIN_MESSAGE_MAP(DrawFild, CWnd)
 	ON_WM_PAINT()
+    ON_WM_ERASEBKGND()
 END_MESSAGE_MAP()
 
 BOOL DrawFild::PreCreateWindow(CREATESTRUCT& cs)
@@ -23,32 +24,53 @@ BOOL DrawFild::PreCreateWindow(CREATESTRUCT& cs)
 
 	cs.dwExStyle |= WS_EX_CLIENTEDGE;
 	cs.style &= ~WS_BORDER;
-	cs.lpszClass = AfxRegisterWndClass(CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS,
-		::LoadCursor(NULL, IDC_ARROW), reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1), NULL);
+    cs.lpszClass = AfxRegisterWndClass(CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS,
+		::LoadCursor(NULL, IDC_ARROW), NULL, NULL);
 
 	return TRUE;
 }
 
 void DrawFild::OnPaint()
 {
-	CPaintDC dc(this); // контекст устройства для рисования
+	CPaintDC dc(this);
 
-	// Получаем размеры клиентской области
-	CRect rect;
-	GetClientRect(&rect);
+	CRect rc;
+	GetClientRect(&rc);
 
-	// Очищаем фон
-	dc.FillSolidRect(&rect, RGB(20, 20, 40));
-
-	// Рисуем игровое поле, если игра привязана
-	if (m_pGame != nullptr)
+	// Подготовка бэк-буфера под текущий размер
+	if (m_backBmp.GetSafeHandle() == NULL || m_backSize.cx != rc.Width() || m_backSize.cy != rc.Height())
 	{
-		// Получаем поле из игровой логики и рисуем его
-		DrawField(&dc, m_pGame->GetField()); // Будет реализовано в TetrisGame
-
+		m_backBmp.DeleteObject();
+		CBitmap tmp;
+		tmp.CreateCompatibleBitmap(&dc, rc.Width(), rc.Height());
+		m_backBmp.Attach((HBITMAP)tmp.Detach());
+		m_backSize = CSize(rc.Width(), rc.Height());
 	}
 
-	DrawTetromino(&dc, m_pGame->GetCurrentPiece());
+	CDC memDC;
+	memDC.CreateCompatibleDC(&dc);
+	CBitmap* pOldBmp = memDC.SelectObject(&m_backBmp);
+
+	// Фон
+	memDC.FillSolidRect(&rc, RGB(20, 20, 40));
+
+	// Игровое поле и фигуры
+	if (m_pGame != nullptr)
+	{
+		DrawField(&memDC, m_pGame->GetField());
+		DrawTetromino(&memDC, m_pGame->GetCurrentPiece());
+	}
+
+	// Выводим буфер на экран
+	dc.BitBlt(0, 0, rc.Width(), rc.Height(), &memDC, 0, 0, SRCCOPY);
+
+	memDC.SelectObject(pOldBmp);
+}
+
+BOOL DrawFild::OnEraseBkgnd(CDC* /*pDC*/)
+{
+	// Фон рисуем сами в бэк-буфере
+	return TRUE;
 }
 
 void DrawFild::DrawField(CDC* pDC, const int field[FIELD_HEIGHT][FIELD_WIDTH])

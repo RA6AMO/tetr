@@ -45,6 +45,10 @@ END_MESSAGE_MAP()
 
 
 
+// Статические члены для сообщений об обновлении счета
+CTetrisDlg* CTetrisDlg::s_instance = nullptr;
+const UINT CTetrisDlg::WM_APP_SCORE_CHANGED = WM_APP + 1;
+
 CTetrisDlg::CTetrisDlg(CWnd* pParent /*=nullptr*/)
 	: CDialogEx(IDD_TETRIS_DIALOG, pParent)
 {
@@ -77,6 +81,7 @@ BEGIN_MESSAGE_MAP(CTetrisDlg, CDialogEx)
 	ON_WM_KEYUP()
 	ON_WM_TIMER()
 	ON_BN_CLICKED(IDC_RESULTSANDGAME, &CTetrisDlg::OnBnClickedResultsandgame)
+	ON_MESSAGE(WM_APP_SCORE_CHANGED, &CTetrisDlg::OnScoreMsg)
 END_MESSAGE_MAP()
 
 
@@ -113,11 +118,15 @@ BOOL CTetrisDlg::OnInitDialog()
 
 	// TODO: добавьте дополнительную инициализацию
 
+	// Зарегистрировать текущий экземпляр для статических callback'ов
+	s_instance = this;
+
 	ModifyStyle(WS_THICKFRAME, 0, SWP_FRAMECHANGED);
 
 	// Создаем компоненты игры Тетрис
 	CreateGameComponents();
 	InitializeGame();
+	UpdateGameInfo();
 
 	return TRUE;  // возврат значения TRUE, если фокус не передан элементу управления
 }
@@ -140,6 +149,9 @@ void CTetrisDlg::OnSize(UINT nType, int cx, int cy)
 
 void CTetrisDlg::OnDestroy()
 {
+	// Сбросить указатель экземпляра, чтобы callback'и не обращались к уничтоженному окну
+	s_instance = nullptr;
+
 	CleanupGame();
 	CDialogEx::OnDestroy();
 }
@@ -354,9 +366,11 @@ BOOL CTetrisDlg::PreTranslateMessage(MSG* pMsg)
 // Callback изменения счета (статическая функция)
 void CTetrisDlg::OnScoreChanged(int newScore, int level, int lines)
 {
-	// TODO: Обновить UI с новым счетом
-	// Можно использовать глобальную переменную или singleton для доступа к диалогу
-	// Или передавать указатель на диалог через пользовательские данные
+	// Отправить сообщение в окно диалога для безопасного обновления UI
+	if (s_instance && ::IsWindow(s_instance->m_hWnd))
+	{
+		s_instance->PostMessage(WM_APP_SCORE_CHANGED, (WPARAM)newScore, MAKELPARAM(level, lines));
+	}
 }
 
 // Callback изменения состояния игры (статическая функция)
@@ -428,7 +442,7 @@ void CTetrisDlg::UpdateGameInfo()
 		CString gameTime = m_pController->GetFormattedGameTime();
 
 		// Обновить соответствующие элементы UI
-		// SetWindowText для текстовых полей или другие методы
+		SetDlgItemInt(IDC_SCORE_LABLE, score, FALSE);
 	}
 }
 
@@ -465,4 +479,18 @@ void CTetrisDlg::OnBnClickedResultsandgame()
 			PauseResumeGame();
 		}
 	}
+}
+
+// Обработчик пользовательского сообщения об изменении счета
+LRESULT CTetrisDlg::OnScoreMsg(WPARAM wParam, LPARAM lParam)
+{
+	int newScore = static_cast<int>(wParam);
+	int level = LOWORD(lParam);
+	int lines = HIWORD(lParam);
+
+	UNREFERENCED_PARAMETER(level);
+	UNREFERENCED_PARAMETER(lines);
+
+	SetDlgItemInt(IDC_SCORE_LABLE, newScore, FALSE);
+	return 0;
 }

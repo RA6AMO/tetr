@@ -72,6 +72,11 @@ protected:
 	void UpdateGameInfo();          // Обновление информации об игре
 	void UpdateButtons();           // Обновление состояния кнопок
 
+	// Инфраструктура для обновления счета из callback
+	static CTetrisDlg* s_instance;
+	static const UINT WM_APP_SCORE_CHANGED;
+	afx_msg LRESULT OnScoreMsg(WPARAM wParam, LPARAM lParam);
+
 	DECLARE_MESSAGE_MAP()
 
 public:

@@ -42,10 +42,15 @@ public:
 
 protected:
 	afx_msg void OnPaint();
+	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
 	DECLARE_MESSAGE_MAP()
 
 private:
 	void DrawGrid(CDC* pDC, int startX, int startY); // Рисование сетки
 	void DrawBorder(CDC* pDC, int startX, int startY); // Рисование границ поля
+
+private:
+	CBitmap m_backBmp;
+	CSize   m_backSize;
 };
 

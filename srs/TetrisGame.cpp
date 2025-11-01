@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "TetrisGame.h"
 
+// Определение статического члена
+const int TetrisGame::BASE_POINTS[] = { 0, 100, 300, 500, 800 };
 
 // Конструктор
 TetrisGame::TetrisGame()
@@ -410,10 +412,9 @@ void TetrisGame::UpdateScore(int linesCleared)
 	// - Бонус за множественные линии (Tetris)
 	// - Множитель уровня
 
-	const int basePoints[] = { 0, 100, 300, 500, 800 }; // 0, 1, 2, 3, 4 линии
 	if (linesCleared > 0 && linesCleared <= 4)
 	{
-		m_score += basePoints[linesCleared] * m_level;
+		m_score += BASE_POINTS[linesCleared] * m_level;
 	}
 }
 
@@ -424,7 +425,7 @@ void TetrisGame::UpdateLevel()
 	// - Увеличение уровня каждые 10 линий
 	// - Ускорение падения фигур
 
-	int newLevel = (m_linesCleared / 10) + 1;
+	int newLevel = (m_linesCleared / LVL_UP_LINES) + 1;
 	if (newLevel != m_level)
 	{
 		m_level = newLevel;

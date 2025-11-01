@@ -242,6 +242,7 @@ void TetrisController::OnKeyDown(UINT nChar)
 		}
 		break;
 	case KEY_PAUSE:
+	case VK_P:
 		if (IsGamePaused())
 			ResumeGame();
 		else
@@ -336,6 +337,8 @@ void TetrisController::Render()
 		m_pRenderer->UpdateWindow();
 	}
 }
+
+
 
 // Принудительная перерисовка
 void TetrisController::ForceRedraw()

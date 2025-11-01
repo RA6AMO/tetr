@@ -38,15 +38,16 @@ static const int T_OFFSETS[4][4][2] = {
 	{{0,1}, {1,0}, {1,1}, {1,2}}   // rotation 3: (было rotation 0)
 };
 
-// S-тетромино (опорная точка: верхний правый)
+// S-тетромино (опорная точка: верхний левый)
 static const int S_OFFSETS[4][4][2] = {
-	{{0,0}, {1,0}, {1,-1}, {2,-1}}, // rotation 0: (было rotation 1/3)
-	{{0,0}, {0,-1}, {1,0}, {1,1}},  // rotation 1: (было rotation 0/2)
-	{{0,0}, {1,0}, {1,-1}, {2,-1}}, // rotation 2: (было rotation 1/3)
-	{{0,0}, {0,-1}, {1,0}, {1,1}}   // rotation 3: (было rotation 0/2)
+	{{0,1}, {0,2}, {1,0}, {1,1}},  // rotation 0: горизонтальная (зеркальное отражение Z)
+	{{0,0}, {1,1}, {1,2}, {2,1}},  // rotation 1: вертикальная (зеркальное отражение Z)
+	{{0,1}, {0,2}, {1,0}, {1,1}},  // rotation 2: горизонтальная (дубликат rotation 0)
+	{{0,0}, {1,1}, {1,2}, {2,1}}   // rotation 3: вертикальная (дубликат rotation 1)
 };
 
 // Z-тетромино (опорная точка: верхний левый)  
+
 static const int Z_OFFSETS[4][4][2] = {
 	{{0,1}, {1,0}, {1,1}, {2,0}},  // rotation 0: (было rotation 1/3)
 	{{0,0}, {0,1}, {1,1}, {1,2}},  // rotation 1: (было rotation 0/2)
@@ -92,6 +93,8 @@ public:
 	static const int FIELD_HEIGHT = 20;
 	static const int TETROMINO_SIZE = 4;    // Максимальный размер фигуры 4x4
 	static const int BASE_DELAY = 750;
+	static const int LVL_UP_LINES = 5;
+	static const int BASE_POINTS[];
 
 	// Конструкция
 public:

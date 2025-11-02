@@ -252,7 +252,7 @@ void TetrisGame::GenerateNewPiece()
 	m_nextPiece.type = GetRandomTetrominoType();
 	m_nextPiece.rotation = 0;
 	m_nextPiece.color = GetTetrominoColor(m_nextPiece.type);
-	m_nextPiece.x = FIELD_WIDTH / 2 - 2;
+	m_nextPiece.x = FIELD_WIDTH / 2 - 1;
 	m_nextPiece.y = 0;
 }
 

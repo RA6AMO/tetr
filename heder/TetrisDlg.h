@@ -6,6 +6,8 @@
 #include "afxdialogex.h"
 #include "DrawFild.h"
 #include "TetrisController.h"
+#include "DatabaseManager.h"
+#include "ResultsTableManager.h"
 
 // Форвардные объявления
 class DrawFild;
@@ -31,6 +33,7 @@ protected:
 	// Игровое состояние (сохранено для совместимости)
 	bool m_game_started{ false };
 	bool m_main_page{ false };
+	bool m_showingResults{ false }; // true - отображаются результаты, false - отображается игра
 
 	// Реализация
 protected:
@@ -40,6 +43,8 @@ protected:
 	DrawFild* m_pGameField;          // Рендерер игрового поля
 	TetrisGame* m_pGame;             // Игровая логика
 	TetrisController* m_pController; // Контроллер игры
+	DatabaseManager* m_pDatabase;    // Управление БД результатов
+	ResultsTableManager* m_pResultsTable; // Управление таблицей результатов
 
 	// Созданные функции схемы сообщений
 	virtual BOOL OnInitDialog();
@@ -71,10 +76,12 @@ protected:
 	// Обновление UI
 	void UpdateGameInfo();          // Обновление информации об игре
 	void UpdateButtons();           // Обновление состояния кнопок
+	void UpdateGameTimeDisplay();   // Обновление отображения времени игры
 
 	// Инфраструктура для обновления счета из callback
 	static CTetrisDlg* s_instance;
 	static const UINT WM_APP_SCORE_CHANGED;
+	static const UINT_PTR TIME_UPDATE_TIMER_ID = 2; // Таймер для обновления времени
 	afx_msg LRESULT OnScoreMsg(WPARAM wParam, LPARAM lParam);
 
 	DECLARE_MESSAGE_MAP()

@@ -58,6 +58,9 @@ CTetrisDlg::CTetrisDlg(CWnd* pParent /*=nullptr*/)
 	m_pGameField = nullptr;
 	m_pGame = nullptr;
 	m_pController = nullptr;
+	m_pDatabase = nullptr;
+	m_pResultsTable = nullptr;
+    m_showingResults = false;
 }
 
 CTetrisDlg::~CTetrisDlg()
@@ -128,6 +131,35 @@ BOOL CTetrisDlg::OnInitDialog()
 	InitializeGame();
 	UpdateGameInfo();
 
+	// Инициализация БД и таблицы результатов
+	// Скрыть таблицу по умолчанию
+	if (CWnd* pListWnd = GetDlgItem(IDC_LIST_TABLE))
+	{
+		pListWnd->ShowWindow(SW_HIDE);
+	}
+
+	// Создать и инициализировать менеджеры
+	if (!m_pDatabase)
+	{
+		m_pDatabase = new DatabaseManager();
+		m_pDatabase->Initialize();
+	}
+	if (!m_pResultsTable)
+	{
+		m_pResultsTable = new ResultsTableManager();
+		CListCtrl* pList = static_cast<CListCtrl*>(GetDlgItem(IDC_LIST_TABLE));
+		if (pList)
+		{
+			m_pResultsTable->Initialize(pList);
+		}
+	}
+
+    // Начальный текст кнопки: показывать результаты при нажатии
+    SetDlgItemText(IDC_RESULTSANDGAME, L"Результаты");
+
+	// Запустить таймер обновления времени (1 секунда)
+	SetTimer(TIME_UPDATE_TIMER_ID, 1000, nullptr);
+
 	return TRUE;  // возврат значения TRUE, если фокус не передан элементу управления
 }
 
@@ -152,7 +184,23 @@ void CTetrisDlg::OnDestroy()
 	// Сбросить указатель экземпляра, чтобы callback'и не обращались к уничтоженному окну
 	s_instance = nullptr;
 
+	// Остановить таймер обновления времени
+	KillTimer(TIME_UPDATE_TIMER_ID);
+
 	CleanupGame();
+
+	// Освободить менеджеры БД и таблицы
+	if (m_pResultsTable)
+	{
+		delete m_pResultsTable;
+		m_pResultsTable = nullptr;
+	}
+	if (m_pDatabase)
+	{
+		m_pDatabase->Close();
+		delete m_pDatabase;
+		m_pDatabase = nullptr;
+	}
 	CDialogEx::OnDestroy();
 }
 
@@ -200,6 +248,7 @@ void CTetrisDlg::CreateGameComponents()
 		m_pController->SetScoreChangedCallback(OnScoreChanged);
 		m_pController->SetGameStateChangedCallback(OnGameStateChanged);
 		m_pController->SetLinesClearedCallback(OnLinesCleared);
+		//m_pController->EndGame();
 	}
 	catch (const CString& error)
 	{
@@ -250,6 +299,19 @@ void CTetrisDlg::CleanupGame()
 	{
 		delete m_pGame;
 		m_pGame = nullptr;
+	}
+
+	// Освободить менеджеры результатов и БД
+	if (m_pResultsTable)
+	{
+		delete m_pResultsTable;
+		m_pResultsTable = nullptr;
+	}
+	if (m_pDatabase)
+	{
+		m_pDatabase->Close();
+		delete m_pDatabase;
+		m_pDatabase = nullptr;
 	}
 }
 
@@ -335,7 +397,11 @@ void CTetrisDlg::OnKeyUp(UINT nChar, UINT nRepCnt, UINT nFlags)
 // Обработка таймера
 void CTetrisDlg::OnTimer(UINT_PTR nIDEvent)
 {
-	if (m_pController != nullptr)
+	if (nIDEvent == TIME_UPDATE_TIMER_ID)
+	{
+		UpdateGameTimeDisplay();
+	}
+	else if (m_pController != nullptr)
 	{
 		m_pController->OnTimer(nIDEvent);
 	}
@@ -376,8 +442,21 @@ void CTetrisDlg::OnScoreChanged(int newScore, int level, int lines)
 // Callback изменения состояния игры (статическая функция)
 void CTetrisDlg::OnGameStateChanged(bool gameOver, bool paused)
 {
-	// TODO: Обновить UI в зависимости от состояния игры
-	// Показать сообщение о завершении игры, изменить кнопки и т.д.
+	// Сохранить результат при окончании игры
+	if (s_instance && ::IsWindow(s_instance->m_hWnd))
+	{
+		if (gameOver && s_instance->m_pController)
+		{
+			int score = s_instance->m_pController->GetCurrentScore();
+			int level = s_instance->m_pController->GetCurrentLevel();
+			int lines = s_instance->m_pController->GetLinesCleared();
+			DWORD timeMs = s_instance->m_pController->GetGameTime();
+			if (s_instance->m_pDatabase)
+			{
+				s_instance->m_pDatabase->SaveResult(score, level, lines, timeMs);
+			}
+		}
+	}
 }
 
 // Callback очистки линий (статическая функция)
@@ -443,6 +522,19 @@ void CTetrisDlg::UpdateGameInfo()
 
 		// Обновить соответствующие элементы UI
 		SetDlgItemInt(IDC_SCORE_LABLE, score, FALSE);
+		SetDlgItemText(IDC_TIME_SKORE, gameTime);
+	}
+}
+
+void CTetrisDlg::UpdateGameTimeDisplay()
+{
+	if (m_pController != nullptr)
+	{
+		if (m_pController->IsGameRunning() && !m_pController->IsGamePaused())
+		{
+			CString gameTime = m_pController->GetFormattedGameTime();
+			SetDlgItemText(IDC_TIME_SKORE, gameTime);
+		}
 	}
 }
 
@@ -465,20 +557,66 @@ void CTetrisDlg::UpdateButtons()
 
 void CTetrisDlg::OnBnClickedResultsandgame()
 {
-	// TODO: Реализовать обработку нажатия кнопки
-	// В зависимости от текущего состояния игры - начать новую игру или показать результаты
+    // Переключение между игрой и результатами работает только когда игра не запущена
+    if (m_pController == nullptr)
+        return;
 
-	if (m_pController != nullptr)
-	{
-		if (!m_pController->IsGameRunning())
-		{
-			StartNewGame();
-		}
-		else
-		{
-			PauseResumeGame();
-		}
-	}
+    if (m_pController->IsGameRunning())
+    {
+        // Игровой процесс идёт — не переключаем режим
+        return;
+    }
+
+    if (m_showingResults)
+    {
+        // Переключаемся на игру
+        if (m_pResultsTable)
+        {
+            m_pResultsTable->SetVisible(false);
+        }
+        if (m_pGameField && ::IsWindow(m_pGameField->GetSafeHwnd()))
+        {
+            m_pGameField->ShowWindow(SW_SHOW);
+        }
+        // Показываем элементы игры
+        if (CWnd* pWnd = GetDlgItem(IDC_STATIC))
+            pWnd->ShowWindow(SW_SHOW);
+        if (CWnd* pWnd = GetDlgItem(IDC_SCORE_LABLE))
+            pWnd->ShowWindow(SW_SHOW);
+        if (CWnd* pWnd = GetDlgItem(IDC_TIME_SKORE))
+            pWnd->ShowWindow(SW_SHOW);
+        if (CWnd* pWnd = GetDlgItem(IDC_STATIC2))
+            pWnd->ShowWindow(SW_SHOW);
+        SetDlgItemText(IDC_RESULTSANDGAME, L"Результаты");
+        m_showingResults = false;
+    }
+    else
+    {
+        // Переключаемся на результаты
+        if (m_pGameField && ::IsWindow(m_pGameField->GetSafeHwnd()))
+        {
+            m_pGameField->ShowWindow(SW_HIDE);
+        }
+        if (m_pResultsTable)
+        {
+            m_pResultsTable->SetVisible(true);
+            if (m_pDatabase)
+            {
+                m_pResultsTable->UpdateTable(m_pDatabase);
+            }
+        }
+        // Скрываем элементы игры
+        if (CWnd* pWnd = GetDlgItem(IDC_STATIC))
+            pWnd->ShowWindow(SW_HIDE);
+        if (CWnd* pWnd = GetDlgItem(IDC_SCORE_LABLE))
+            pWnd->ShowWindow(SW_HIDE);
+        if (CWnd* pWnd = GetDlgItem(IDC_TIME_SKORE))
+            pWnd->ShowWindow(SW_HIDE);
+        if (CWnd* pWnd = GetDlgItem(IDC_STATIC2))
+            pWnd->ShowWindow(SW_HIDE);
+        SetDlgItemText(IDC_RESULTSANDGAME, L"Игра");
+        m_showingResults = true;
+    }
 }
 
 // Обработчик пользовательского сообщения об изменении счета
